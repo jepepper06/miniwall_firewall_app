@@ -1,0 +1,34 @@
+[package]
+name = "miniwall"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "daemon"
+path = "src/daemon/main.rs"
+
+[[bin]]
+name = "firewall"
+path = "src/main.rs"
+
+[dependencies]
+libc = "0.2.153"
+prettytable = "0.10.0"
+rusqlite = { version = "0.31.0", features = ["bundled"] }
+wchar = "0.11.0"
+widestring = "1.0.2"
+
+[dependencies.windows]
+version = "0.54.0"
+features = [
+    "Win32_Foundation",
+    "Win32_System_Rpc",
+    "Wdk",
+    "Win32_NetworkManagement_WindowsFilteringPlatform",
+    "Wdk_NetworkManagement",
+    "Wdk_NetworkManagement_WindowsFilteringPlatform",
+    "Win32_Security",
+    "Win32_System_Rpc"
+]
+[build-dependencies]
+cmake = "0.1.50"

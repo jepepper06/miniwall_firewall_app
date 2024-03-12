@@ -1,0 +1,19 @@
+{
+    "cSpell.words": [
+        "CALLOUT",
+        "Fwpm",
+        "libc",
+        "miniwall",
+        "PCWSTR",
+        "prettytable",
+        "rusqlite",
+        "rustc",
+        "sguid"
+    ],
+    "files.associations": {
+        "windows.h": "c",
+        "xstring": "c",
+        "string": "c"
+    },
+    "C_Cpp.errorSquiggles": "disabled"
+}
