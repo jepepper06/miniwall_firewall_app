@@ -8,7 +8,6 @@ use windows::Win32::NetworkManagement::WindowsFilteringPlatform::{FwpmFreeMemory
 use std::env;
 use prettytable::{row, Table};
 #[link(name="converter", kind="static")]
-#[warn(dead_code)]
 extern "C" {
     fn guid_to_string(guid: *const GUID) -> *const u16;
 }
@@ -33,50 +32,15 @@ fn main() -> Result<()> {
         unsafe {
             close_filtering_engine(engine_handle);
         }
-        panic!("not oki doki");
+        panic!("filtering engine fails at closing!");
     }
-    //THIS IS CODE
-    
-       let mut enum_handle: HANDLE = Default::default();
-       let mut count: u32 = Default::default();
-       let mut filters: *mut *mut FWPM_FILTER0 = std::ptr::null_mut();
-       // FILTERS ENUMERATION
-       unsafe{
-           create_enum_handle(engine_handle, &mut enum_handle);
-           filter_enum(engine_handle, enum_handle, &mut count,&mut filters );
-           println!("count: {}", count);
-           for i in 0..count {
-               if i == 0 {
-                   println!("long : {}", count);
-               }
-    
-               let filter = *filters.offset(i as isize);
-               let filter_key_ptr = std::ptr::addr_of!((*filter).filterKey);
-    
-               if wchar_to_string((*filter).displayData.name.0).contains("filter to block chrome") {
-                   println!("position: {}",i);
-                   println!("Filter key: {}", wchar_to_string(guid_to_string(filter_key_ptr)));
-                   println!("Filter name: {}", wchar_to_string((*filter).displayData.name.0));
-               }
-               // println!("Filter name: {}", wchar_to_string((*filter).displayData.name.0));
-               std::ptr::drop_in_place(filter);
-           }
-           println!("END");
-           if filters.is_null(){
-               println!("freed");
-           }else{
-               let filters_ptr_ptr: *mut *mut c_void = &mut filters as *mut _ as *mut *mut c_void;
-               FwpmFreeMemory0(filters_ptr_ptr);
-           }
-           destroy_enum_handle(engine_handle, enum_handle);
-       }
-    // let mut connection = db_connect();
-    // let args: Vec<String> = env::args().skip(1).collect();
-    // selector_of_arguments(&args, engine_handle,&mut connection);
-    // unsafe { _block_app(engine_handle, "block opera","C:\\Users\\tusnalgas\\AppData\\Local\\Programs\\Opera GX\\opera.exe") };
+    let mut connection = db_connect();
+    let args: Vec<String> = env::args().skip(1).collect();
+    selector_of_arguments(&args, engine_handle,&mut connection);
+    unsafe { _block_app(engine_handle, "block opera","C:\\Users\\tusnalgas\\AppData\\Local\\Programs\\Opera GX\\opera.exe") };
         unsafe {
         close_filtering_engine(engine_handle);
-        println!("oki doki")
+        println!("app run without failures!")
     }
 
     Ok(())
@@ -155,11 +119,41 @@ fn file_exist(file_path: &str) -> bool{
         false => false
     }
 }
-//    // filter to block opera
-//    unsafe {
-
-//        _block_app(engine_handle, &"filter to block opera",&"C:\\Users\\tusnalgas\\AppData\\Local\\Programs\\Opera GX\\opera.exe");
-//    }
-//    // END OF FILTER TO BLOCK  
-// {5997E8D5-321B-41B4-A12E-95AA48A27D6A}
-// {5997E8D5-321B-41B4-A12E-95AA48A27D6A}
+// THIS IS TESTING CODE
+fn _enumerate_and_print_filters(engine_handle: HANDLE) {
+        let mut enum_handle: HANDLE = Default::default();
+        let mut count: u32 = Default::default();
+        let mut filters: *mut *mut FWPM_FILTER0 = std::ptr::null_mut();
+    
+        // FILTERS ENUMERATION
+        unsafe {
+            create_enum_handle(engine_handle, &mut enum_handle);
+            filter_enum(engine_handle, enum_handle, &mut count, &mut filters);
+            println!("count: {}", count);
+            for i in 0..count {
+                if i == 0 {
+                    println!("long : {}", count);
+                }
+    
+                let filter = *filters.offset(i as isize);
+                let filter_key_ptr = std::ptr::addr_of!((*filter).filterKey);
+    
+                if wchar_to_string((*filter).displayData.name.0).contains("filter to block chrome") {
+                    println!("position: {}", i);
+                    println!("Filter key: {}", wchar_to_string(guid_to_string(filter_key_ptr)));
+                    println!("Filter name: {}", wchar_to_string((*filter).displayData.name.0));
+                }
+                // println!("Filter name: {}", wchar_to_string((*filter).displayData.name.0));
+                std::ptr::drop_in_place(filter);
+            }
+            println!("END");
+            if filters.is_null() {
+                println!("freed");
+            } else {
+                let filters_ptr_ptr: *mut *mut c_void = &mut filters as *mut _ as *mut *mut c_void;
+                FwpmFreeMemory0(filters_ptr_ptr);
+            }
+            destroy_enum_handle(engine_handle, enum_handle);
+        }
+    }
+    
