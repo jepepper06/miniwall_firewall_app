@@ -142,7 +142,7 @@ pub unsafe fn _block_app(engine_handle: HANDLE,filter_name: &str, filename: &str
 }
 // DB CONNECTION
 pub fn db_connect() -> Connection {
-    let connection = Connection::open("../firewall.db")
+    let connection = Connection::open("firewall.db")
         .expect("error while trying to connect to db!");
     connection
         .execute("create table if not exists blocked_apps (id integer primary key, guid text not null, name text not null, file_path text not null, action text not null)",())
