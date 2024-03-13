@@ -1,11 +1,28 @@
 
+use libc::c_void;
 use rusqlite::Connection;
 use windows::core::{Result, GUID};
 use windows::Win32::Foundation::HANDLE;
 use miniwall::*;
+use windows::Win32::NetworkManagement::WindowsFilteringPlatform::{FwpmFreeMemory0, FWPM_FILTER0};
 use std::env;
 use prettytable::{row, Table};
-
+#[link(name="converter", kind="static")]
+#[warn(dead_code)]
+extern "C" {
+    fn guid_to_string(guid: *const GUID) -> *const u16;
+}
+unsafe fn wchar_to_string(ptr: *const u16) -> String {
+    if ptr.is_null() {
+        return String::new();
+    }
+    let mut len = 0;
+    while *ptr.offset(len) != 0 {
+        len += 1;
+    }
+    let slice = std::slice::from_raw_parts(ptr, len as usize);
+    String::from_utf16_lossy(slice)
+}
 fn main() -> Result<()> {
     // Open a session to the WFP engine
     let mut engine_handle: HANDLE = Default::default();
@@ -18,44 +35,44 @@ fn main() -> Result<()> {
         }
         panic!("not oki doki");
     }
-    // THIS IS CODE
-    //
-    //    let mut enum_handle: HANDLE = Default::default();
-    //    let mut count: u32 = Default::default();
-    //    let mut filters: *mut *mut FWPM_FILTER0 = std::ptr::null_mut();
-    //    // FILTERS ENUMERATION
-    //    unsafe{
-    //        create_enum_handle(engine_handle, &mut enum_handle);
-    //        filter_enum(engine_handle, enum_handle, &mut count,&mut filters );
-    //        println!("count: {}", count);
-    //        for i in 0..count {
-    //            if i == 0 {
-    //                println!("long : {}", count);
-    //            }
+    //THIS IS CODE
     
-    //            let filter = *filters.offset(i as isize);
-    //            let filter_key_ptr = std::ptr::addr_of!((*filter).filterKey);
+       let mut enum_handle: HANDLE = Default::default();
+       let mut count: u32 = Default::default();
+       let mut filters: *mut *mut FWPM_FILTER0 = std::ptr::null_mut();
+       // FILTERS ENUMERATION
+       unsafe{
+           create_enum_handle(engine_handle, &mut enum_handle);
+           filter_enum(engine_handle, enum_handle, &mut count,&mut filters );
+           println!("count: {}", count);
+           for i in 0..count {
+               if i == 0 {
+                   println!("long : {}", count);
+               }
     
-    //            if wchar_to_string((*filter).displayData.name.0).contains("filter to block chrome") {
-    //                println!("position: {}",i);
-    //                println!("Filter key: {}", wchar_to_string(guid_to_string(filter_key_ptr)));
-    //                println!("Filter name: {}", wchar_to_string((*filter).displayData.name.0));
-    //            }
-    //            // println!("Filter name: {}", wchar_to_string((*filter).displayData.name.0));
-    //            std::ptr::drop_in_place(filter);
-    //        }
-    //        println!("END");
-    //        if filters.is_null(){
-    //            println!("freed");
-    //        }else{
-    //            let filters_ptr_ptr: *mut *mut c_void = &mut filters as *mut _ as *mut *mut c_void;
-    //            FwpmFreeMemory0(filters_ptr_ptr);
-    //        }
-    //        destroy_enum_handle(engine_handle, enum_handle);
-    //    }
-    let mut connection = db_connect();
-    let args: Vec<String> = env::args().skip(1).collect();
-    selector_of_arguments(&args, engine_handle,&mut connection);
+               let filter = *filters.offset(i as isize);
+               let filter_key_ptr = std::ptr::addr_of!((*filter).filterKey);
+    
+               if wchar_to_string((*filter).displayData.name.0).contains("filter to block chrome") {
+                   println!("position: {}",i);
+                   println!("Filter key: {}", wchar_to_string(guid_to_string(filter_key_ptr)));
+                   println!("Filter name: {}", wchar_to_string((*filter).displayData.name.0));
+               }
+               // println!("Filter name: {}", wchar_to_string((*filter).displayData.name.0));
+               std::ptr::drop_in_place(filter);
+           }
+           println!("END");
+           if filters.is_null(){
+               println!("freed");
+           }else{
+               let filters_ptr_ptr: *mut *mut c_void = &mut filters as *mut _ as *mut *mut c_void;
+               FwpmFreeMemory0(filters_ptr_ptr);
+           }
+           destroy_enum_handle(engine_handle, enum_handle);
+       }
+    // let mut connection = db_connect();
+    // let args: Vec<String> = env::args().skip(1).collect();
+    // selector_of_arguments(&args, engine_handle,&mut connection);
     // unsafe { _block_app(engine_handle, "block opera","C:\\Users\\tusnalgas\\AppData\\Local\\Programs\\Opera GX\\opera.exe") };
         unsafe {
         close_filtering_engine(engine_handle);

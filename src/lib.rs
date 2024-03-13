@@ -283,11 +283,11 @@ pub unsafe fn block_app_once_on_startup(layer: &str, filter_name: &str, file_pat
         let mut wfp_filter = FWPM_FILTER0::default();
         wfp_filter.filterKey = GUID::new().unwrap();
         wfp_filter.displayData.name.0 = filter_name_parsed.as_mut_ptr();
-        wfp_filter.layerKey = FWPM_LAYER_ALE_AUTH_CONNECT_V6;
+        wfp_filter.layerKey = FWPM_LAYER_ALE_AUTH_CONNECT_V4;
         wfp_filter.action.r#type = FWP_ACTION_BLOCK;
         wfp_filter.numFilterConditions = 1;
         wfp_filter.filterCondition = &mut condition;
-        unsafe { _add_filter(engine_handle, wfp_filter) };
+        _add_filter(engine_handle, wfp_filter);
         let app_id_ptr_ptr: *mut *mut c_void = &mut app_id as *mut _ as *mut *mut c_void;
         FwpmFreeMemory0(app_id_ptr_ptr);
         wfp_filter.filterKey

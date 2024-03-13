@@ -29,7 +29,8 @@ fn main(){
     }
     for mut filter in filters {
         if filter.name.contains("-on-v4-connect-layer"){
-            let guid: GUID = unsafe { block_app_once_on_startup("v4", &filter.name, &filter.file_path, engine_handle) };
+            println!("file_path: {}",&filter.file_path);
+            let guid: GUID = unsafe { block_app_once_on_startup(&"v4", &filter.name, &filter.file_path, engine_handle) };
             filter.guid = unsafe { 
                 wchar_to_string(
                     guid_to_string(
@@ -37,7 +38,7 @@ fn main(){
                 };
             filter.update(&mut connection);
         }else if filter.name.contains("-on-v6-connect-layer"){
-            let guid: GUID = unsafe { block_app_once_on_startup("v4", &filter.name, &filter.file_path, engine_handle) };
+            let guid: GUID = unsafe { block_app_once_on_startup(&"v6", &filter.name, &filter.file_path, engine_handle) };
 
             filter.guid = unsafe { 
                 wchar_to_string(
@@ -49,4 +50,5 @@ fn main(){
     unsafe {
         close_filtering_engine(engine_handle);
     }
+    println!("hola este es el fin!");
 }
