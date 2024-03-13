@@ -37,11 +37,6 @@ fn main() -> Result<()> {
     let mut connection = db_connect();
     let args: Vec<String> = env::args().skip(1).collect();
     selector_of_arguments(&args, engine_handle,&mut connection);
-    unsafe { _block_app(engine_handle, "block opera","C:\\Users\\tusnalgas\\AppData\\Local\\Programs\\Opera GX\\opera.exe") };
-        unsafe {
-        close_filtering_engine(engine_handle);
-        println!("app run without failures!")
-    }
 
     Ok(())
 }
