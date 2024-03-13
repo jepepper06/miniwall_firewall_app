@@ -99,13 +99,13 @@ fn block_app_selected_in_cli(arguments: &Vec<String>, engine_handle: HANDLE, con
                     filter_model2.save(connection);
                 }
             }else{
-                panic!("command structure is the following: **miniwall block-app -path <path> -name <name>**");
+                panic!("command structure is the following: **miniwall block-app-filter path <path> name <name>**");
             }
         }else{
             panic!("file path does not exists!");
         }
     }else {
-        panic!("command structure is the following: **miniwall block-app -path <path> -name <name>**");
+        panic!("command structure is the following: **miniwall block-app-filter path <path> name <name>**");
     }
 }
 fn file_exist(file_path: &str) -> bool{
