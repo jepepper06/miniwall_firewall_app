@@ -19,7 +19,7 @@ it, then decided to move ahead with project and use CMake tool to use this C fun
 adds a new filter to block an app, path to executable must be specified and name too.
 ``` cargo run --bin firewall list-all ```
 list all of the filters that are in db 
-``` cargo run --bin firewall delete-filter ```
+``` cargo run --bin firewall delete-filter <id>```
 delete a filter from db, and from system WFP filters.
 ``` cargo run --bin daemon ```
 apply all filters in db when system starts.
