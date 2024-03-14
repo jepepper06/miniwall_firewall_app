@@ -15,11 +15,11 @@ You will need to install CMake tools, because projects depends on a C function,
 I tried several times to translate this function to rust, I wasted like half a day in
 it, then decided to move ahead with project and use CMake tool to use this C function in my project.
 ### COMANDS
-``` cargo run --bin firewall blocked-app-filter path <path> name <name>```<br>
+``` cargo run --bin firewall blocked-app-filter path "<path>" name "<name>"```<br>
 adds a new filter to block an app, path to executable must be specified and name too.<br>
 ``` cargo run --bin firewall list-all ```<br>
 list all of the filters that are in db <br>
-``` cargo run --bin firewall delete-filter <id>```<br>
+``` cargo run --bin firewall delete-filter "<path>"```<br>
 delete a filter from db, and from system WFP filters.<br>
 ``` cargo run --bin daemon ```<br>
 apply all filters in db when system starts.<br>

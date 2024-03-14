@@ -208,6 +208,23 @@ impl Filter {
         ))}).unwrap();
         filter_iter.last().unwrap().unwrap()
     }
+    pub fn get_by_file_path(connection: &mut Connection, file_path: String) -> Vec<Self> {
+        let mut prepared_query = connection
+        .prepare("select id, guid, name, action, file_path from blocked_apps where file_path = :file_path")
+        .expect("connection with db cannot be stablished!");
+    let filter_iter = prepared_query.query_map(&[(":file_path",file_path.as_str())], |row|
+        {Ok(Filter::from_db(
+            row.get(2)?,
+            row.get(3)?,
+            row.get(3)?,
+            row.get(0)?,
+            row.get(1)?
+    ))}).unwrap();
+    println!("function executed");
+    let filters: Result<Vec<_>, _> = filter_iter.collect();
+
+    filters.unwrap()
+    }
 }
 pub trait DAO {
     fn save( &self, connection: &mut Connection ) -> bool;

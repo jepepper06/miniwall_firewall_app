@@ -58,11 +58,13 @@ fn list_all_selected(connection: &mut Connection){
     table.printstd();
 }
 fn delete_filter_selected(arguments: &Vec<String>,connection: &mut Connection, engine_handle: HANDLE){
-    let filter = Filter::get_by_id(connection, arguments[1].to_string());
-    filter.delete(connection);
-    let filter_guid = filter.guid.as_str();
-    unsafe { 
-        _delete_filter(engine_handle, &mut GUID::from(&filter_guid[1..filter_guid.len() -1]));
+    let filters = Filter::get_by_file_path(connection, arguments[1].to_string());
+    for filter in filters{
+        filter.delete(connection);
+        let filter_guid = filter.guid.as_str();
+        unsafe { 
+            _delete_filter(engine_handle, &mut GUID::from(&filter_guid[1..filter_guid.len() -1]));
+        }
     }
 }
 fn block_app_selected_in_cli(arguments: &Vec<String>, engine_handle: HANDLE, connection:&mut Connection){
