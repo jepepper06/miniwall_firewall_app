@@ -8,7 +8,7 @@ name = "daemon"
 path = "src/daemon/main.rs"
 
 [[bin]]
-name = "firewall"
+name = "miniwall"
 path = "src/main.rs"
 
 [dependencies]

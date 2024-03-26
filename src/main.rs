@@ -3,37 +3,18 @@ use libc::c_void;
 use rusqlite::Connection;
 use windows::core::{Result, GUID};
 use windows::Win32::Foundation::HANDLE;
-use miniwall::*;
 use windows::Win32::NetworkManagement::WindowsFilteringPlatform::{FwpmFreeMemory0, FWPM_FILTER0};
 use std::env;
 use prettytable::{row, Table};
-#[link(name="converter", kind="static")]
-extern "C" {
-    fn guid_to_string(guid: *const GUID) -> *const u16;
-}
-unsafe fn wchar_to_string(ptr: *const u16) -> String {
-    if ptr.is_null() {
-        return String::new();
-    }
-    let mut len = 0;
-    while *ptr.offset(len) != 0 {
-        len += 1;
-    }
-    let slice = std::slice::from_raw_parts(ptr, len as usize);
-    String::from_utf16_lossy(slice)
-}
+use crate::utils::{*, database_n_model::*,filtering_abstractions::*};
+pub mod utils;
+
 fn main() -> Result<()> {
     // Open a session to the WFP engine
     let mut engine_handle: HANDLE = Default::default();
-    let hr = unsafe {
+    unsafe {
         initialize_filtering_engine(&mut engine_handle)
     };
-    if hr != 0 {
-        unsafe {
-            close_filtering_engine(engine_handle);
-        }
-        panic!("filtering engine fails at closing!");
-    }
     let mut connection = db_connect();
     let args: Vec<String> = env::args().skip(1).collect();
     selector_of_arguments(&args, engine_handle,&mut connection);
@@ -72,11 +53,11 @@ fn block_app_selected_in_cli(arguments: &Vec<String>, engine_handle: HANDLE, con
         if file_exist(&arguments[2]){
             if arguments[3] == "name".to_string(){
                 unsafe { 
+                    delete_all_with_file_path(connection,&arguments[2],engine_handle);
                     let filters_v4_and_v6 = _block_app(engine_handle, arguments[4].as_str(),arguments[2].as_str());
                     
                     let mut filter = filters_v4_and_v6.filter1;
-                    let mut filter_model1_name = arguments[4].clone();
-                    filter_model1_name.push_str(&"-on-v6-connect-layer");
+                    let filter_model1_name = Layer::V6.to_filter_name(arguments[4].clone().as_str());
                     let filepath = &arguments[2];
                     let filter_model1_guid = &mut filter.filterKey; 
                     let filter_model1 = Filter::new(
@@ -87,8 +68,7 @@ fn block_app_selected_in_cli(arguments: &Vec<String>, engine_handle: HANDLE, con
                         filter_model1_guid);
 
                     let mut filter2 = filters_v4_and_v6.filter2;
-                    let mut filter_model2_name = arguments[4].clone();
-                    filter_model2_name.push_str(&"-on-v4-connect-layer");
+                    let filter_model2_name = Layer::V4.to_filter_name(arguments[4].clone().as_str());
                     let filter_model2_guid = &mut filter2.filterKey;
 
                     let filter_model2 = Filter::new(
@@ -97,6 +77,7 @@ fn block_app_selected_in_cli(arguments: &Vec<String>, engine_handle: HANDLE, con
                         filepath.to_string(),
                         0,
                         filter_model2_guid);
+
                     filter_model1.save(connection);
                     filter_model2.save(connection);
                 }
@@ -110,6 +91,12 @@ fn block_app_selected_in_cli(arguments: &Vec<String>, engine_handle: HANDLE, con
         panic!("command structure is the following: **miniwall block-app-filter path <path> name <name>**");
     }
 }
+
+fn activate_whitelist_mode_selected(arguments: &Vec<String>,engine_handle: HANDLE, connection: &mut Connection){
+    
+}
+fn deactivate_whitelist_mode_selected(){}
+fn allow_app_selected(){}
 fn file_exist(file_path: &str) -> bool{
     match std::fs::metadata(file_path).is_ok() {
         true => true,
@@ -117,7 +104,8 @@ fn file_exist(file_path: &str) -> bool{
     }
 }
 // THIS IS TESTING CODE
-fn _enumerate_and_print_filters(engine_handle: HANDLE) {
+#[allow(dead_code)]
+fn enumerate_and_print_filters(engine_handle: HANDLE) {
         let mut enum_handle: HANDLE = Default::default();
         let mut count: u32 = Default::default();
         let mut filters: *mut *mut FWPM_FILTER0 = std::ptr::null_mut();
@@ -153,4 +141,3 @@ fn _enumerate_and_print_filters(engine_handle: HANDLE) {
             destroy_enum_handle(engine_handle, enum_handle);
         }
     }
-    
