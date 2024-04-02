@@ -1,10 +1,9 @@
-
+use std::env;
 use libc::c_void;
 use rusqlite::Connection;
-use windows::core::{Result, GUID};
+use windows::core::Result;
 use windows::Win32::Foundation::HANDLE;
 use windows::Win32::NetworkManagement::WindowsFilteringPlatform::{FwpmFreeMemory0, FWPM_FILTER0};
-use std::env;
 use prettytable::{row, Table};
 use crate::utils::{*, database_n_model::*,filtering_abstractions::*};
 pub mod utils;
@@ -18,7 +17,11 @@ fn main() -> Result<()> {
     let mut connection = db_connect();
     let args: Vec<String> = env::args().skip(1).collect();
     selector_of_arguments(&args, engine_handle,&mut connection);
-
+    let _ = connection.close();
+    // enumerate_and_print_filters(engine_handle);
+    unsafe {
+        close_filtering_engine(engine_handle);
+    }
     Ok(())
 }
 fn selector_of_arguments(arguments: &Vec<String>, engine_handle: HANDLE, connection: &mut Connection){
@@ -26,7 +29,11 @@ fn selector_of_arguments(arguments: &Vec<String>, engine_handle: HANDLE, connect
         Some("block-app-filter") => block_app_selected_in_cli(arguments, engine_handle, connection),
         Some("delete-filter") => delete_filter_selected(arguments,connection, engine_handle),
         Some("list-all") => list_all_selected(connection),
-        _ => todo!()
+        Some("whitelist-on") => activate_whitelist_mode_selected(engine_handle, connection),
+        Some("whitelist-off") => deactivate_whitelist_mode_selected(engine_handle, connection),
+        Some("list-all-connections") => list_all_connections_selected(),
+        Some("allow-app-filter") => allow_app_filter_selected(engine_handle, connection, arguments),
+        _ => println!("todo")
     }
 }
 fn list_all_selected(connection: &mut Connection){
@@ -39,14 +46,7 @@ fn list_all_selected(connection: &mut Connection){
     table.printstd();
 }
 fn delete_filter_selected(arguments: &Vec<String>,connection: &mut Connection, engine_handle: HANDLE){
-    let filters = Filter::get_by_file_path(connection, arguments[1].to_string());
-    for filter in filters{
-        filter.delete(connection);
-        let filter_guid = filter.guid.as_str();
-        unsafe { 
-            _delete_filter(engine_handle, &mut GUID::from(&filter_guid[1..filter_guid.len() -1]));
-        }
-    }
+    delete_all_with_file_path(connection, &arguments[1].to_string(), engine_handle);
 }
 fn block_app_selected_in_cli(arguments: &Vec<String>, engine_handle: HANDLE, connection:&mut Connection){
     if arguments[1] == "path".to_string(){
@@ -54,9 +54,9 @@ fn block_app_selected_in_cli(arguments: &Vec<String>, engine_handle: HANDLE, con
             if arguments[3] == "name".to_string(){
                 unsafe { 
                     delete_all_with_file_path(connection,&arguments[2],engine_handle);
-                    let filters_v4_and_v6 = _block_app(engine_handle, arguments[4].as_str(),arguments[2].as_str());
+                    let filters_v6_and_v4 = _block_app(engine_handle, arguments[4].as_str(),arguments[2].as_str());
                     
-                    let mut filter = filters_v4_and_v6.filter1;
+                    let mut filter = filters_v6_and_v4.filter1;
                     let filter_model1_name = Layer::V6.to_filter_name(arguments[4].clone().as_str());
                     let filepath = &arguments[2];
                     let filter_model1_guid = &mut filter.filterKey; 
@@ -67,7 +67,7 @@ fn block_app_selected_in_cli(arguments: &Vec<String>, engine_handle: HANDLE, con
                         0,
                         filter_model1_guid);
 
-                    let mut filter2 = filters_v4_and_v6.filter2;
+                    let mut filter2 = filters_v6_and_v4.filter2;
                     let filter_model2_name = Layer::V4.to_filter_name(arguments[4].clone().as_str());
                     let filter_model2_guid = &mut filter2.filterKey;
 
@@ -91,12 +91,36 @@ fn block_app_selected_in_cli(arguments: &Vec<String>, engine_handle: HANDLE, con
         panic!("command structure is the following: **miniwall block-app-filter path <path> name <name>**");
     }
 }
-
-fn activate_whitelist_mode_selected(arguments: &Vec<String>,engine_handle: HANDLE, connection: &mut Connection){
-    
+fn allow_app_filter_selected(engine_handle: HANDLE, connection: &mut Connection, arguments: &Vec<String>){
+    if &arguments[1] == "path" {
+        if &arguments[3] == "name" {
+            allow_app(connection, &arguments[2], engine_handle, &arguments[4]);
+        }
+        else {
+            panic!("command structure is the following: ** miniwall allow-app-filter path <path> name <name> **");
+        }
+    }else {
+        panic!("command structure is the following: ** miniwall allow-app-filter path <path> name <name> **");
+    }
 }
-fn deactivate_whitelist_mode_selected(){}
-fn allow_app_selected(){}
+fn activate_whitelist_mode_selected(engine_handle: HANDLE, connection: &mut Connection){
+        activate_whitelist_mode(connection, engine_handle,"App blocked by whitelist mode by default");
+}
+fn deactivate_whitelist_mode_selected(engine_handle: HANDLE, connection: &mut Connection){
+    disable_whitelist_mode(connection, engine_handle);
+}
+fn list_all_connections_selected(){
+    let connections = get_tcp_connections().unwrap_or_else(|error| {
+        panic!("error while getting connections : {:?}", error);
+    });
+    let mut table = Table::new();
+    table.add_row(row!["LOCAL_ADDRESS","LOCAL_PORT","STATE","EXECUTABLE_PATH","REMOTE_ADDRESS","REMOTE_PORT"]);
+    
+    for conn in connections {
+        table.add_row(row![conn._local_address,conn._local_port,conn._state, conn._executable_path, conn._remote_address, conn._remote_port]);
+    }
+    table.printstd();
+}
 fn file_exist(file_path: &str) -> bool{
     match std::fs::metadata(file_path).is_ok() {
         true => true,
@@ -122,13 +146,13 @@ fn enumerate_and_print_filters(engine_handle: HANDLE) {
     
                 let filter = *filters.offset(i as isize);
                 let filter_key_ptr = std::ptr::addr_of!((*filter).filterKey);
-    
-                if wchar_to_string((*filter).displayData.name.0).contains("filter to block chrome") {
+                if wchar_to_string((*filter).displayData.name.0).contains("filter") || wchar_to_string((*filter).displayData.name.0).contains("App blocked by whitelist mode by default"){
                     println!("position: {}", i);
                     println!("Filter key: {}", wchar_to_string(guid_to_string(filter_key_ptr)));
                     println!("Filter name: {}", wchar_to_string((*filter).displayData.name.0));
                 }
-                // println!("Filter name: {}", wchar_to_string((*filter).displayData.name.0));
+
+                    // println!("Filter name: {}", wchar_to_string((*filter).displayData.name.0));
                 std::ptr::drop_in_place(filter);
             }
             println!("END");

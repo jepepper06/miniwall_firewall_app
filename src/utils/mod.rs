@@ -51,15 +51,16 @@ pub fn _action_to_string(action: &FWPM_ACTION0) -> &'static str {
     }
 }
 
-struct NetworkCommandResult {
-    _local_address: String,
-    _local_port: String,
-    _remote_address: String,
-    _remote_port: String,
-    _state: String,
-    _executable_path: String,
+pub struct NetworkCommandResult {
+    pub _local_address: String,
+    pub _local_port: String,
+    pub _remote_address: String,
+    pub _remote_port: String,
+    pub _state: String,
+    pub _executable_path: String,
 }
-fn _vector_to_hashmap(results: Vec<NetworkCommandResult>) -> HashMap<String, NetworkCommandResult> {
+#[allow(dead_code)]
+pub fn vector_to_hashmap(results: Vec<NetworkCommandResult>) -> HashMap<String, NetworkCommandResult> {
     let mut map: HashMap<String, NetworkCommandResult> = HashMap::new();
 
     for result in results {
@@ -99,7 +100,7 @@ impl NetworkCommandResult {
 
 
 #[allow(dead_code)]
-fn get_tcp_connections() -> Result<Vec<NetworkCommandResult>, String> {
+pub fn get_tcp_connections() -> Result<Vec<NetworkCommandResult>, String> {
     let output = Command::new("powershell")
         .args(&[
             "-Command",
@@ -135,6 +136,8 @@ pub fn allow_app(connection: &mut Connection, file_path: &str,engine_handle: HAN
     let filters_on_v6_n_v4 = create_allow_app_filters(file_path, filter_name, engine_handle);
     let filter_on_v6_layer = filters_on_v6_n_v4.filter1;
     let filter_on_v4_layer = filters_on_v6_n_v4.filter2;
+    unsafe { _add_filter(engine_handle, filter_on_v4_layer) };
+    unsafe { _add_filter(engine_handle, filter_on_v6_layer) };
 
     let filter_model_on_v6_layer = Filter::new(
         Layer::V6.to_filter_name(filter_name),
@@ -162,28 +165,57 @@ pub fn delete_all_with_file_path(connection: &mut Connection, file_path: &str,en
     }
     for filter in filters_by_path {
         let guid_len = filter.guid.len();
-        let mut guid = GUID::from(&filter.guid.as_str()[0..guid_len - 1]);
+        let mut guid = GUID::from(&filter.guid.as_str()[1..guid_len - 1]);
         unsafe { _delete_filter(engine_handle, &mut guid) } 
         filter.delete(connection);
     }
 }
 #[allow(dead_code)]
 pub fn activate_whitelist_mode(connection: &mut Connection,engine_handle: HANDLE, filter_name: &str){
+    const WINDOWS_SYSTEM32_PATH: &str = "C:\\WINDOWS\\";
     let all_filters = Filter::get_all(connection);
     for filter in all_filters {
         let guid_len = filter.guid.len();
-        let mut guid = GUID::from(&filter.guid.as_str()[0..guid_len - 1]);
+        let mut guid = GUID::from(&filter.guid.as_str()[1..guid_len - 1]);
         unsafe { _delete_filter(
             engine_handle, &mut guid); 
         }
     }
     Filter::delete_all(connection);
     let all_connections  = get_tcp_connections().expect("error while retriving connections!");
-    let set_of_connections = _vector_to_hashmap(all_connections);
+    let set_of_connections = vector_to_hashmap(all_connections);
     for conn in set_of_connections {
-        unsafe { 
-            _block_app(engine_handle, filter_name, conn.0.as_str()) 
-        };
+        if !&conn.0
+                .to_lowercase()
+                .contains(&WINDOWS_SYSTEM32_PATH.to_string().to_lowercase()) {
+            let filters = unsafe { 
+                _block_app(engine_handle, filter_name, conn.0.as_str()) 
+            };
+            let mut filter = filters.filter1;
+            let filter_model1_name = Layer::V6.to_filter_name(filter_name);
+            let filepath = conn.0;
+            let filter_model1_guid = &mut filter.filterKey; 
+            let filter_model1 = Filter::new(
+                filter_model1_name,
+                _action_to_string(&filter.action).to_owned(),
+                filepath.to_string(),
+                0,
+                filter_model1_guid);
+
+            let mut filter2 = filters.filter2;
+            let filter_model2_name = Layer::V4.to_filter_name(filter_name);
+            let filter_model2_guid = &mut filter2.filterKey;
+
+            let filter_model2 = Filter::new(
+                filter_model2_name,
+                _action_to_string(&filter2.action).to_owned(),
+                filepath.to_string(),
+                0,
+                filter_model2_guid);
+
+            filter_model1.save(connection);
+            filter_model2.save(connection);
+        }
     }
 }
 #[allow(dead_code)]
@@ -191,12 +223,12 @@ pub fn disable_whitelist_mode(connection: &mut Connection,engine_handle: HANDLE)
     let all_filters = Filter::get_all(connection);
     for filter in all_filters {
         let guid_len = filter.guid.len();
-        let mut guid = GUID::from(&filter.guid.as_str()[0..guid_len - 1]);
+        let mut guid = GUID::from(&filter.guid.as_str()[1..guid_len - 1]);
         unsafe {
             _delete_filter(engine_handle, &mut guid);
         }
-        Filter::delete_all(connection);
     }
+    Filter::delete_all(connection);
 }
 // TEST
 // #[cfg(test)]

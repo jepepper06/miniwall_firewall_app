@@ -94,7 +94,7 @@ impl Filter {
     #[allow(dead_code)]
     pub fn delete_all(connection: &Connection){
         connection
-            .execute("delete * from app_filters",[])
+            .execute("delete from app_filters",[])
             .expect("error while deleting all filters!");
     }
 }

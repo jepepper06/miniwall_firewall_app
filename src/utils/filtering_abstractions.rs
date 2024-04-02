@@ -1,6 +1,6 @@
 use libc::c_void;
 use widestring::U16CString;
-use windows::{core::{GUID, PCWSTR}, Win32::{Foundation::HANDLE, NetworkManagement::WindowsFilteringPlatform::{FwpmEngineClose0, FwpmEngineOpen0, FwpmFilterAdd0, FwpmFilterCreateEnumHandle0, FwpmFilterDeleteByKey0, FwpmFilterDestroyEnumHandle0, FwpmFilterEnum0, FwpmFreeMemory0, FwpmGetAppIdFromFileName0, FWPM_CONDITION_ALE_APP_ID, FWPM_FILTER0, FWPM_FILTER_CONDITION0, FWPM_FILTER_FLAG_BOOTTIME, FWPM_FILTER_FLAG_PERSISTENT, FWPM_LAYER_ALE_AUTH_CONNECT_V4, FWPM_LAYER_ALE_AUTH_CONNECT_V6, FWP_ACTION_BLOCK, FWP_ACTION_PERMIT, FWP_ACTION_TYPE, FWP_BYTE_BLOB, FWP_BYTE_BLOB_TYPE, FWP_MATCH_EQUAL}, System::Rpc::RPC_C_AUTHN_WINNT}};
+use windows::{core::{GUID, PCWSTR}, Win32::{Foundation::HANDLE, NetworkManagement::WindowsFilteringPlatform::{FwpmEngineClose0, FwpmEngineOpen0, FwpmFilterAdd0, FwpmFilterCreateEnumHandle0, FwpmFilterDeleteByKey0, FwpmFilterDestroyEnumHandle0, FwpmFilterEnum0, FwpmFreeMemory0, FwpmGetAppIdFromFileName0, FWPM_CONDITION_ALE_APP_ID, FWPM_FILTER0, FWPM_FILTER_CONDITION0, FWPM_FILTER_FLAG_PERSISTENT, FWPM_LAYER_ALE_AUTH_CONNECT_V4, FWPM_LAYER_ALE_AUTH_CONNECT_V6, FWP_ACTION_BLOCK, FWP_ACTION_PERMIT, FWP_ACTION_TYPE, FWP_BYTE_BLOB, FWP_BYTE_BLOB_TYPE, FWP_MATCH_EQUAL}, System::Rpc::RPC_C_AUTHN_WINNT}};
 
 // WFP ABSTRACTIONS OVER WINDOWS CRATE
 pub unsafe fn initialize_filtering_engine(borrowed_handle: &mut HANDLE) {
@@ -68,7 +68,7 @@ pub unsafe fn _add_filter(engine_handle: HANDLE,filter: FWPM_FILTER0) {
 }
 pub unsafe fn _delete_filter(engine_handle: HANDLE,guid: &mut GUID){
     let result = FwpmFilterDeleteByKey0(engine_handle, guid);
-    if result != 0{
+    if result != 0 {
         close_filtering_engine(engine_handle);
         panic!("error while deleting the filter!");
     }
@@ -138,55 +138,6 @@ impl Layer{
         }
     }
 }
-pub unsafe fn block_app_once_on_startup(layer: Layer, filter_name: &str, file_path: &str,engine_handle: HANDLE) -> GUID{
-    let app_file_path = U16CString::from_str(file_path).unwrap();
-    let mut filter_name_parsed = U16CString::from_str(filter_name).unwrap();
-    let mut app_id: *mut FWP_BYTE_BLOB = std::ptr::null_mut(); 
-    let app_filename = PCWSTR(app_file_path.as_ptr());
-    FwpmGetAppIdFromFileName0(app_filename, &mut app_id);
-    if layer == Layer::V6 {
-        let mut condition = FWPM_FILTER_CONDITION0::default();
-        condition.fieldKey = FWPM_CONDITION_ALE_APP_ID;
-        condition.matchType = FWP_MATCH_EQUAL;
-        condition.conditionValue.r#type = FWP_BYTE_BLOB_TYPE;
-        condition.conditionValue.Anonymous.byteBlob = app_id;
-
-        let mut wfp_filter = FWPM_FILTER0::default();
-        wfp_filter.filterKey = GUID::new().unwrap();
-        wfp_filter.displayData.name.0 = filter_name_parsed.as_mut_ptr();
-        wfp_filter.layerKey = FWPM_LAYER_ALE_AUTH_CONNECT_V6;
-        wfp_filter.action.r#type = FWP_ACTION_BLOCK;
-        wfp_filter.numFilterConditions = 1;
-        wfp_filter.filterCondition = &mut condition;
-        _add_filter(engine_handle, wfp_filter);
-        let app_id_ptr_ptr: *mut *mut c_void = &mut app_id as *mut _ as *mut *mut c_void;
-        FwpmFreeMemory0(app_id_ptr_ptr);
-        wfp_filter.filterKey
-    }else if layer == Layer::V4 {
-        let mut condition = FWPM_FILTER_CONDITION0::default();
-        condition.fieldKey = FWPM_CONDITION_ALE_APP_ID;
-        condition.matchType = FWP_MATCH_EQUAL;
-        condition.conditionValue.r#type = FWP_BYTE_BLOB_TYPE;
-        condition.conditionValue.Anonymous.byteBlob = app_id;
-
-        let mut wfp_filter = FWPM_FILTER0::default();
-        wfp_filter.filterKey = GUID::new().unwrap();
-        wfp_filter.displayData.name.0 = filter_name_parsed.as_mut_ptr();
-        wfp_filter.layerKey = FWPM_LAYER_ALE_AUTH_CONNECT_V4;
-        wfp_filter.action.r#type = FWP_ACTION_BLOCK;
-        wfp_filter.numFilterConditions = 1;
-        wfp_filter.filterCondition = &mut condition;
-        _add_filter(engine_handle, wfp_filter);
-        let app_id_ptr_ptr: *mut *mut c_void = &mut app_id as *mut _ as *mut *mut c_void;
-        FwpmFreeMemory0(app_id_ptr_ptr);
-        wfp_filter.filterKey
-
-    }else{
-        close_filtering_engine(engine_handle);
-        panic!("this layer does not exists or is not applied!");
-    }
-
-}
 #[allow(dead_code)]
 pub fn create_allow_app_filters(filename: &str, filter_name: &str, engine_handle: HANDLE) -> FilterOnV6AndV4{
     let filter_on_v4_layer = create_allow_app_filter_on_v4_layer(filename, filter_name, engine_handle);
@@ -211,6 +162,7 @@ pub fn create_allow_app_filter_on_v4_layer(filename: &str, filter_name: &str, en
     filter.filterKey = GUID::new().unwrap();
 
     filter.displayData.name.0 = filter_name_on_v4.as_mut_ptr();
+    filter.flags = FWPM_FILTER_FLAG_PERSISTENT;
     filter.layerKey = FWPM_LAYER_ALE_AUTH_CONNECT_V6;
     filter.action.r#type = FWP_ACTION_PERMIT;
     filter.numFilterConditions = 1;
@@ -235,6 +187,7 @@ pub fn create_allow_app_filter_on_v6_layer(filename: &str, filter_name: &str, en
     filter.filterKey = GUID::new().unwrap();
 
     filter.displayData.name.0 = filter_name_on_v6.as_mut_ptr();
+    filter.flags = FWPM_FILTER_FLAG_PERSISTENT;
     filter.layerKey = FWPM_LAYER_ALE_AUTH_CONNECT_V4;
     filter.action.r#type = FWP_ACTION_PERMIT;
     filter.numFilterConditions = 1;

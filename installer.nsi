@@ -1,6 +1,6 @@
 ; Nombre del instalador y el archivo de salida
 Name "Miniwall Installer"
-OutFile "miniwall.exe"
+OutFile "miniwall_installer.exe"
 
 ; Request application privileges for Windows Vista+
 RequestExecutionLevel admin
@@ -20,19 +20,17 @@ Section "Install" SecInstall
   SetOutPath $INSTDIR
 
   ; Copy your compiled CLI tool executable
-  File "target\release\firewall.exe"
-  File "target\release\daemon.exe"
-  File "firewall.db"
+  File "target\debug\miniwall.exe"
 
   EnVar::SetHKLM
-  EnVar::AddValue "Path" "target\release\miniwall.exe"
-SectionEnd
-Section "Copy to Startup" SecInstall
-  SetOutPath "$PROFILE\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup"
-  File ""
-
+  EnVar::AddValue "Path" "$INSTDIR"
+  ; Write the uninstaller
+  WriteUninstaller "$INSTDIR\uninstall_miniwall.exe"
 SectionEnd
 
 Section "Uninstall" SecUninstall
-   RMDir /r "$INSTDIR"
+  Delete "$INSTDIR\miniwall.exe"
+  Delete "$INSTDIR\firewall.db"
+  RMDir /r "$INSTDIR"
+  Delete "$INSTDIR\uninstall_miniwall.exe"
 SectionEnd

@@ -4,10 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "daemon"
-path = "src/daemon/main.rs"
-
-[[bin]]
 name = "miniwall"
 path = "src/main.rs"
 

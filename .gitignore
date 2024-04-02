@@ -1,1 +1,4 @@
 /target
+/.vscode
+installer.nsi
+Cargo.lock
