@@ -20,8 +20,8 @@ Section "Install" SecInstall
   SetOutPath $INSTDIR
 
   ; Copy your compiled CLI tool executable
-  File "target\debug\miniwall.exe"
-
+  File "target\release\miniwall.exe"
+  File "firewall.db"
   EnVar::SetHKLM
   EnVar::AddValue "Path" "$INSTDIR"
   ; Write the uninstaller
@@ -33,4 +33,6 @@ Section "Uninstall" SecUninstall
   Delete "$INSTDIR\firewall.db"
   RMDir /r "$INSTDIR"
   Delete "$INSTDIR\uninstall_miniwall.exe"
+  EnVar::SetHKLM
+  EnVar::DeleteValue "Path" "$INSTDIR"
 SectionEnd
